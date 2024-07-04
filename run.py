@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-from src.msd_analysis import run_msd_analysis
+from src.msd_analysis import run_msd_analysis, plot_ensemble_averaged_msd
 
 
 if __name__ == "__main__":
@@ -26,7 +26,8 @@ if __name__ == "__main__":
     result_path = Path("results")/condition_dataset_path.stem
     os.makedirs(result_path, exist_ok=True)
 
-    all_results = {"filename": [], "nspot": [], "length": [], "alpha": [], "D": []}
+    all_results = {"filename": [], "nspot": [], "length": [], "alpha": [], "D": [], "gap_length": []}
+    all_msd = []
 
     # List all files from the given data path and run multiple analysis:
     for filename in sorted(os.listdir(condition_dataset_path)):
@@ -47,17 +48,22 @@ if __name__ == "__main__":
 
         print("\nMeasure track length:")
         for itrack, track in enumerate(tracks):
+            all_results["filename"].append(filename)
+            all_results["nspot"].append(itrack+1)
             length = len(track)
             print(f"spot {itrack+1}:")
             print(f"length:\t{length:}")
             all_results["length"].append(length)
+            gap_length = track.diff()["t"]
+            gap_length = gap_length[gap_length!=1][1:].to_list()
+            all_results["gap_length"].append(gap_length)
+            print(f"gap length: {gap_length}")
 
 
         print("\nRun MSD analysis:")
-        results = run_msd_analysis(tracks, coords_filename, parms, result_path)
+        results, full_msd = run_msd_analysis(tracks, coords_filename, parms, result_path)
+        all_msd.append(full_msd)
         # Combine all results of the MSD analysis:
-        all_results["filename"].extend(results["filename"])
-        all_results["nspot"].extend(results["nspot"])
         all_results["alpha"].extend(results["alpha"])
         all_results["D"].extend(results["D"])
 
@@ -72,6 +78,9 @@ if __name__ == "__main__":
     print(f"length:\t{average_estimates['length']}")
     print(f"alpha:\t{average_estimates['alpha']:.4}")
     print(f"D:\t{average_estimates['D']:.4} um^2/s")
+
+    print("Plot ensemble-averaged MSD")
+    plot_ensemble_averaged_msd(all_msd, parms, result_path)
 
     print("\nEnd.")
     print("\n*********************\n")

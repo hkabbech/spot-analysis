@@ -31,12 +31,12 @@ python run.py data/condition_A
 ```
 
 ## Analysis
-- Track length
-- MSD on a single spot (MSD curve, estimations of alpha and D)
+- Track length + gap length over the track
+- MSD on a single spot (MSD curve (+ log scaled), estimations of alpha and D)
 - Average of length, alpha and D
+- time-averaged MSD curve on all spots
 
 TODO:
-- time-averaged MSD curve on all spots
 - Average step size
 - displ on all spots
 - VAC on all spots

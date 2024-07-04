@@ -1,5 +1,6 @@
 import sys
 import pandas as pd
+import seaborn as sns
 import numpy as np
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
@@ -63,7 +64,7 @@ def run_msd_analysis(tracks, filename, parms, result_path):
     result_path: Path
         Path to the result directory
     """
-    results = {"filename": [], "nspot": [], "alpha": [], "D": []}
+    results = {"alpha": [], "D": []}
 
     for itrack, track in enumerate(tracks):
         # msd, delta_array, alpha, log_c, diffusion = compute_msd(track, size=len(track)//3)
@@ -75,8 +76,6 @@ def run_msd_analysis(tracks, filename, parms, result_path):
         print(f"alpha:\t{alpha:.4}")
         print(f"D:\t{diffusion_unit:.4} um^2/s")
         # Save values
-        results["filename"].append(filename)
-        results["nspot"].append(itrack+1)
         results["alpha"].append(alpha)
         results["D"].append(diffusion_unit)
 
@@ -84,7 +83,7 @@ def run_msd_analysis(tracks, filename, parms, result_path):
         fig, axs = plt.subplots(1)
         axs.plot(deltatime_array, msd*(parms['pixel_size']**2))
         axs.plot(deltatime_array, 2*parms["dimension"]*diffusion*(delta_array**alpha)*(parms['pixel_size']**2),
-                    label=rf"$2nDt^\alpha$ with $\alpha=${alpha:0.2}, $D=${diffusion_unit:0.3} $\mu m^2/s$")
+                    label=rf"$2nDt^\alpha$ with $\alpha=${alpha:0.2}, $D=${diffusion_unit:0.3} $\mu m^2/s$", ls="--", color="r")
         axs.grid(alpha=0.5)
         axs.set_ylabel(r"MSD $[\mu m^2]$")
         axs.set_xlabel(r"$\Delta t$ $[sec]$")
@@ -95,4 +94,60 @@ def run_msd_analysis(tracks, filename, parms, result_path):
         # plt.show()
         plt.close()
 
-    return results
+        # Plot log MSD:
+        fig, axs = plt.subplots(1)
+        axs.plot(deltatime_array, msd*(parms['pixel_size']**2))
+        axs.plot(deltatime_array, 2*parms["dimension"]*diffusion*(delta_array**alpha)*(parms['pixel_size']**2),
+                    label=rf"$2nDt^\alpha$ with $\alpha=${alpha:0.2}, $D=${diffusion_unit:0.3} $\mu m^2/s$", ls="--", color="r")
+        axs.grid(alpha=0.5)
+        axs.set_ylabel(r"MSD $[\mu m^2]$")
+        axs.set_xlabel(r"$\mathrm{\Delta t}$ $[sec]$")
+        axs.set_yscale('log')
+        axs.set_xscale('log')
+        axs.legend()
+        fig.tight_layout()
+        filename_plot = filename.stem+f"nspot={itrack}_msd_curve_logscale.png"
+        plt.savefig(result_path/filename_plot)
+        # plt.show()
+        plt.close()
+
+
+        full_msd, _, _, _, _ = compute_msd(track, size=len(track)-2)
+
+    return results, full_msd
+
+
+def plot_ensemble_averaged_msd(all_msd, parms, result_path):
+    """
+    Plot the ensemble-averaged MSD curve
+
+    Parameters
+    ----------
+    all_msd: list
+        Result of all msd point values within the same condition
+    parms: dict
+        Dictionary containing biophysical parameters
+    result_path: Path
+        Path to the result directory
+    """
+    fig, axs = plt.subplots(1)
+    for msd in all_msd:
+        dt_array = np.array([i for i in range(1, len(msd)+1)])*parms['time_frame']
+        axs.plot(dt_array, msd, alpha=0.2, lw=0.7, color="C0")
+    table = pd.DataFrame(all_msd)
+    table_melt = table.melt()
+    table_melt['variable'] = (table_melt['variable']+1)*parms['time_frame']
+    sns.lineplot(data=table_melt, x='variable', y='value', ax=axs, color="C0");
+    axs.grid(alpha=0.5)
+    axs.set_yscale('log')
+    axs.set_xscale('log')
+    axs.set_ylabel(r'MSD $[\mu m^2]$')
+    axs.set_xlabel(r'$\mathrm{\Delta t}$ $[sec]$')
+    axs.set_title(f"individual and ensemble-averaged MSD for {result_path.stem}")
+    # fig.legend(loc='outside upper right')
+    # axs.set_ylim([10**-3, 10**1])
+    # axs.set_xlim([parms['time_frame'], 10**1])
+    fig.tight_layout()
+    plt.savefig(result_path/"ensemble_averaged_msd.png")
+    # plt.show()
+    plt.close()
