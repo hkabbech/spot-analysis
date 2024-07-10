@@ -5,6 +5,7 @@ import numpy as np
 from pathlib import Path
 
 from src.msd_analysis import run_msd_analysis, plot_ensemble_averaged_msd
+from src.vac_analysis import run_vac_analysis, plot_vac_curve
 
 
 if __name__ == "__main__":
@@ -25,9 +26,12 @@ if __name__ == "__main__":
     # Create result path
     result_path = Path("results")/condition_dataset_path.stem
     os.makedirs(result_path, exist_ok=True)
+    os.makedirs(result_path/"msd_analysis"/"individual_msd_curves", exist_ok=True)
+    os.makedirs(result_path/"vac_analysis", exist_ok=True)
 
     all_results = {"filename": [], "nspot": [], "length": [], "alpha": [], "D": [], "gap_length": []}
     all_msd = []
+    all_vac = []
 
     # List all files from the given data path and run multiple analysis:
     for filename in sorted(os.listdir(condition_dataset_path)):
@@ -61,11 +65,15 @@ if __name__ == "__main__":
 
 
         print("\nRun MSD analysis:")
-        results, full_msd = run_msd_analysis(tracks, coords_filename, parms, result_path)
+        results, full_msd = run_msd_analysis(tracks, coords_filename, parms, result_path/"msd_analysis"/"individual_msd_curves")
         all_msd.append(full_msd)
         # Combine all results of the MSD analysis:
         all_results["alpha"].extend(results["alpha"])
         all_results["D"].extend(results["D"])
+
+        print("\nRun VAC analysis:")
+        vac = run_vac_analysis(track, parms)
+        all_vac.extend(vac)
 
         print("\n---------------------\n")
 
@@ -80,9 +88,13 @@ if __name__ == "__main__":
     print(f"D:\t{average_estimates['D']:.4} um^2/s")
 
     print("Plot ensemble-averaged MSD")
-    plot_ensemble_averaged_msd(all_msd, parms, result_path)
+    plot_ensemble_averaged_msd(all_msd, parms, average_estimates, result_path/"msd_analysis", logscale=False)
+    plot_ensemble_averaged_msd(all_msd, parms, average_estimates, result_path/"msd_analysis", logscale=True)
+
+
+    plot_vac_curve(all_vac, parms, result_path/"vac_analysis")
 
     print("\nEnd.")
     print("\n*********************\n")
 
-    all_results_df.to_csv(result_path/"msd_analysis.csv")
+    all_results_df.to_csv(result_path/"results_estimates.csv")

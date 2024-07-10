@@ -94,7 +94,7 @@ def run_msd_analysis(tracks, filename, parms, result_path):
         # plt.show()
         plt.close()
 
-        # Plot log MSD:
+        # Plot MSD logscale:
         fig, axs = plt.subplots(1)
         axs.plot(deltatime_array, msd*(parms['pixel_size']**2))
         axs.plot(deltatime_array, 2*parms["dimension"]*diffusion*(delta_array**alpha)*(parms['pixel_size']**2),
@@ -113,11 +113,12 @@ def run_msd_analysis(tracks, filename, parms, result_path):
 
 
         full_msd, _, _, _, _ = compute_msd(track, size=len(track)-2)
+        full_msd = full_msd*parms['pixel_size']**2
 
     return results, full_msd
 
 
-def plot_ensemble_averaged_msd(all_msd, parms, result_path):
+def plot_ensemble_averaged_msd(all_msd, parms, average_estimates, result_path, logscale=True):
     """
     Plot the ensemble-averaged MSD curve
 
@@ -129,25 +130,48 @@ def plot_ensemble_averaged_msd(all_msd, parms, result_path):
         Dictionary containing biophysical parameters
     result_path: Path
         Path to the result directory
+    average_estimates: pd.DataFrame
+        Averaged alpha and D of estimates from individual MSD curves
+    logscale: boolean
+        Change scale to log if True
     """
     fig, axs = plt.subplots(1)
+    first = True
     for msd in all_msd:
         dt_array = np.array([i for i in range(1, len(msd)+1)])*parms['time_frame']
-        axs.plot(dt_array, msd, alpha=0.2, lw=0.7, color="C0")
+        if first:
+            axs.plot(dt_array, msd, alpha=0.2, lw=0.7, color="C0", label="individual MSD curves")
+            first = False
+        else:
+            axs.plot(dt_array, msd, alpha=0.2, lw=0.7, color="C0")
+
     table = pd.DataFrame(all_msd)
     table_melt = table.melt()
-    table_melt['variable'] = (table_melt['variable']+1)*parms['time_frame']
-    sns.lineplot(data=table_melt, x='variable', y='value', ax=axs, color="C0");
+    table_melt['variable'] = (table_melt['variable']*parms['time_frame']+1)
+
+    sns.lineplot(data=table_melt, x='variable', y='value', ax=axs, color="C0", errorbar=None, label="Ensemble-averaged MSD")
+    ## Add line fit from alpha and D averaged:
+    alpha = average_estimates["alpha"]
+    diffusion_unit = average_estimates["D"]
+    diffusion = diffusion_unit / (parms['pixel_size']**2/parms["time_frame"])
+    delta_array = np.array([i for i in range(1, 1000)])
+    deltatime_array = delta_array * parms['time_frame']
+    axs.plot(deltatime_array, 2*parms["dimension"]*diffusion*(delta_array**alpha)*(parms['pixel_size']**2),
+            label=rf"$2nDt^\alpha$ with $\alpha=${alpha:0.2}, $D=${diffusion_unit:0.3} $\mu m^2/s$", ls="--", color="r")
     axs.grid(alpha=0.5)
-    axs.set_yscale('log')
-    axs.set_xscale('log')
+    axs.legend()
+    if logscale:
+        axs.set_yscale('log')
+        axs.set_xscale('log')
     axs.set_ylabel(r'MSD $[\mu m^2]$')
     axs.set_xlabel(r'$\mathrm{\Delta t}$ $[sec]$')
-    axs.set_title(f"individual and ensemble-averaged MSD for {result_path.stem}")
-    # fig.legend(loc='outside upper right')
+    axs.set_title(f"Individual and ensemble-averaged MSD curves for {result_path.stem}")
     # axs.set_ylim([10**-3, 10**1])
     # axs.set_xlim([parms['time_frame'], 10**1])
     fig.tight_layout()
-    plt.savefig(result_path/"ensemble_averaged_msd.png")
+    plt.savefig(result_path/f"ensemble_averaged_msd_logscale={logscale}.png")
     # plt.show()
     plt.close()
+
+    table.loc['mean'] = table.mean()
+    table.to_csv(result_path/"msd_curves.csv")
