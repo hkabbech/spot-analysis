@@ -146,10 +146,12 @@ def plot_ensemble_averaged_msd(all_msd, parms, average_estimates, result_path, l
             axs.plot(dt_array, msd, alpha=0.2, lw=0.7, color="C0")
 
     table = pd.DataFrame(all_msd)
+
     table_melt = table.melt()
-    table_melt['variable'] = (table_melt['variable']*parms['time_frame']+1)
+    table_melt['variable'] = ((table_melt['variable']+1)*parms['time_frame'])
 
     sns.lineplot(data=table_melt, x='variable', y='value', ax=axs, color="C0", errorbar=None, label="Ensemble-averaged MSD")
+
     ## Add line fit from alpha and D averaged:
     alpha = average_estimates["alpha"]
     diffusion_unit = average_estimates["D"]
@@ -159,6 +161,7 @@ def plot_ensemble_averaged_msd(all_msd, parms, average_estimates, result_path, l
     axs.plot(deltatime_array, 2*parms["dimension"]*diffusion*(delta_array**alpha)*(parms['pixel_size']**2),
             label=rf"$2nDt^\alpha$ with $\alpha=${alpha:0.2}, $D=${diffusion_unit:0.3} $\mu m^2/s$", ls="--", color="r")
     axs.grid(alpha=0.5)
+
     axs.legend()
     if logscale:
         axs.set_yscale('log')
