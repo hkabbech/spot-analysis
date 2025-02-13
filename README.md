@@ -35,8 +35,5 @@ python run.py data/condition_A
 - MSD on a single spot (MSD curve (+ log scaled), estimations of alpha and D)
 - Average of length, alpha and D
 - time-averaged MSD curve on all spots
-- VAC on all spots
-
-TODO:
-- Average step size
-- displ on all spots
+- VAC
+- Gaussianity

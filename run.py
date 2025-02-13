@@ -4,9 +4,9 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-from src.msd_analysis import run_msd_analysis, plot_ensemble_averaged_msd
-from src.vac_analysis import run_vac_analysis, plot_vac_curve
-
+from src.msd_analysis import measure_plot_all_msd
+from src.vac_analysis import measure_plot_all_vac
+from src.displ_gaussianity import measure_plot_all_displ
 
 if __name__ == "__main__":
 
@@ -28,73 +28,12 @@ if __name__ == "__main__":
     os.makedirs(result_path, exist_ok=True)
     os.makedirs(result_path/"msd_analysis"/"individual_msd_curves", exist_ok=True)
     os.makedirs(result_path/"vac_analysis", exist_ok=True)
-
-    all_results = {"filename": [], "nspot": [], "length": [], "alpha": [], "D": [], "gap_length": []}
-    all_msd = []
-    all_vac = []
-
-    # List all files from the given data path and run multiple analysis:
-    for filename in sorted(os.listdir(condition_dataset_path)):
-        if not filename.endswith(".xml"):
-            continue
-        coords_filename = condition_dataset_path/filename
-        print(f"file: {filename}")
-
-        # # Get dataframe and split it per spot track:
-        # df = pd.read_xml(coords_filename, xpath=".//*")[["t", "x", "y"]]
-        # nan_indices = df.index[df.isna().all(axis=1)][1:]
-        # tracks = [subdf.dropna() for subdf in np.split(df, nan_indices)][1:]
+    os.makedirs(result_path/"gaussianity", exist_ok=True)
 
 
-        # nspots = pd.read_xml(filename, xpath="./*")["nSpots"].to_list()
-        df = pd.read_xml(coords_filename, xpath=".//detection")
-        tracks = [df]
-
-        print("\nMeasure track length:")
-        for itrack, track in enumerate(tracks):
-            all_results["filename"].append(filename)
-            all_results["nspot"].append(itrack+1)
-            length = len(track)
-            print(f"spot {itrack+1}:")
-            print(f"length:\t{length:}")
-            all_results["length"].append(length)
-            gap_length = track.diff()["t"]
-            gap_length = gap_length[gap_length!=1][1:].to_list()
-            all_results["gap_length"].append(gap_length)
-            print(f"gap length: {gap_length}")
-
-
-        print("\nRun MSD analysis:")
-        results, full_msd = run_msd_analysis(tracks, coords_filename, parms, result_path/"msd_analysis"/"individual_msd_curves")
-        all_msd.append(full_msd)
-        # Combine all results of the MSD analysis:
-        all_results["alpha"].extend(results["alpha"])
-        all_results["D"].extend(results["D"])
-
-        print("\nRun VAC analysis:")
-        vac = run_vac_analysis(track, parms)
-        all_vac.extend(vac)
-
-        print("\n---------------------\n")
-
-    all_results_df = pd.DataFrame.from_dict(all_results)
-    all_results_df = pd.concat([all_results_df, all_results_df[["length", "alpha", "D"]].apply(['mean', "median"])])  # Add mean and median
-
-    print("\n\n*********************\n")
-    print(f"Averages:")
-    average_estimates = all_results_df[["length", "alpha", "D"]].loc["mean"]
-    print(f"length:\t{average_estimates['length']}")
-    print(f"alpha:\t{average_estimates['alpha']:.4}")
-    print(f"D:\t{average_estimates['D']:.4} um^2/s")
-
-    print("Plot ensemble-averaged MSD")
-    plot_ensemble_averaged_msd(all_msd, parms, average_estimates, result_path/"msd_analysis", logscale=False)
-    plot_ensemble_averaged_msd(all_msd, parms, average_estimates, result_path/"msd_analysis", logscale=True)
-
-
-    plot_vac_curve(all_vac, parms, result_path/"vac_analysis")
-
-    print("\nEnd.")
-    print("\n*********************\n")
-
-    all_results_df.to_csv(result_path/"results_estimates.csv")
+    print("\nMeasure and plot all displacements (Gaussianity/Laplace)")
+    measure_plot_all_displ(condition_dataset_path, result_path/"gaussianity", parms)
+    print("\nMeasure and plot all VAC")
+    measure_plot_all_vac(condition_dataset_path, result_path/"vac_analysis", parms)
+    print("\nRun track measurements and MSD")
+    measure_plot_all_msd(condition_dataset_path, result_path, parms)
