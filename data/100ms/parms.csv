@@ -1,0 +1,4 @@
+parm,value,comment
+dimension,2,x and y
+time_frame,0.1,unit in sec (100 ms)
+pixel_size,0.067,unit in um
