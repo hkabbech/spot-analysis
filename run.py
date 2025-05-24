@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
 
     # Create result path
-    result_path = Path("results")/condition_dataset_path.stem
+    result_path = Path("results")/condition_dataset_path.stem/f"dimension-{int(parms['dimension'])}"
     os.makedirs(result_path, exist_ok=True)
     os.makedirs(result_path/"msd_analysis"/"individual_msd_curves", exist_ok=True)
     os.makedirs(result_path/"vac_analysis", exist_ok=True)

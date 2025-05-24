@@ -103,10 +103,14 @@ def compute_msd(track, size, dim=2):
             x_displ = coords['x'][delta:]-coords['x'][:-delta]
             y_displ = coords['y'][delta:]-coords['y'][:-delta]
             res = abs(x_displ)**2 + abs(y_displ)**2
-            msd[i] = np.mean(res)
-            sigma[i] = np.std(res)
+        elif dim == 1:
+            x_displ = coords['x'][delta:]-coords['x'][:-delta]
+            res = abs(x_displ)**2
         else:
-            print('Dimension should be 2.')
+            print(f'Dimension should be {dim}.')
+            return 0
+        msd[i] = np.mean(res)
+        sigma[i] = np.std(res)
     # popt, _ = curve_fit(f_slope_intercept, np.log(delta_array), np.log(msd))
     popt, _ = curve_fit(f_slope_intercept, np.log(delta_array), np.log(msd), sigma=sigma,
                         absolute_sigma=True)
@@ -132,9 +136,9 @@ def run_msd_analysis(tracks, filename, parms, result_path):
     results = {"alpha": [], "D": []}
 
     for itrack, track in enumerate(tracks):
-        # msd, delta_array, alpha, log_c, diffusion = compute_msd(track, size=len(track)//3)
+        # msd, delta_array, alpha, log_c, diffusion = compute_msd(track, dim=parms["dimension"], size=len(track)//3)
         track_len_ten_perc = len(track)//100*10
-        msd, delta_array, alpha, log_c, diffusion = compute_msd(track, size=max(10, track_len_ten_perc))
+        msd, delta_array, alpha, log_c, diffusion = compute_msd(track, dim=parms["dimension"], size=max(10, track_len_ten_perc))
         diffusion_unit = diffusion * (parms['pixel_size']**2/parms['time_frame'])
         deltatime_array = delta_array * parms['time_frame']
         print(f"spot {itrack+1}:")
@@ -177,7 +181,7 @@ def run_msd_analysis(tracks, filename, parms, result_path):
         plt.close()
 
 
-        full_msd, _, _, _, _ = compute_msd(track, size=len(track)-2)
+        full_msd, _, _, _, _ = compute_msd(track, dim=parms["dimension"], size=len(track)-2)
         full_msd = full_msd*parms['pixel_size']**2
 
     return results, full_msd
