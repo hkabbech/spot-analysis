@@ -250,3 +250,54 @@ def plot_ensemble_averaged_msd(all_msd, parms, average_estimates, result_path, l
     # plt.show()
     plt.close()
 
+
+    ##### Additional plot: Fit the TA-MSD to estimate alpha and D
+    fig, axs = plt.subplots(1)
+    sns.lineplot(data=table_melt, x='variable', y='value', ax=axs, color="black", errorbar=None, label="Ensemble-averaged MSD")
+
+
+    ## Fit alpha and D on mean msd curve:
+    def f_slope_intercept(x_val, a_val, b_val):
+        """Linear regression y = ax + b."""
+        return a_val*x_val + b_val
+
+    dim = parms["dimension"]
+    ta_msd = list(table.loc["mean"])
+    delta_array = np.arange(1, len(ta_msd)+1)
+
+    track_len_ten_perc = len(ta_msd)//100*10
+    size=max(10, track_len_ten_perc)
+    delta_array = delta_array[:size]
+    ta_msd = ta_msd[:size]
+
+    popt, _ = curve_fit(f_slope_intercept, np.log(delta_array), np.log(ta_msd))
+    alpha_2 = popt[0] # slope
+    log_c = popt[1] # intercept
+    diffusion_2 = np.exp(log_c)/(2*dim)
+    diffusion_unit_2 = diffusion_2 * (parms['pixel_size']**2/parms['time_frame'])
+
+    ## Add line fit from fitted alpha and D:
+    delta_array = np.array([i for i in range(1, 1000)])
+    deltatime_array = delta_array * parms['time_frame']
+    axs.plot(deltatime_array, 2*parms["dimension"]*diffusion_2*(delta_array**alpha_2)*(parms['pixel_size']**2),
+            label=rf"$2nDt^\alpha$ with $\alpha=${alpha:0.2}, $D=${diffusion_unit_2:0.3} $\mu m^2/s$", ls="--", color="r")
+    axs.grid(alpha=0.5)
+    axs.legend()
+    if logscale:
+        axs.set_yscale('log')
+        axs.set_xscale('log')
+    axs.set_ylabel(r'MSD $[\mu m^2]$')
+    axs.set_xlabel(r'$\mathrm{\Delta t}$ $[sec]$')
+    axs.set_title(f"Individual and ensemble-averaged MSD curves for {result_path.stem}")
+    # axs.set_ylim([10**-3, 10**1])
+    # axs.set_xlim([parms['time_frame'], 10**1])
+    fig.tight_layout()
+    plt.savefig(result_path/f"ensemble_averaged_msd_logscale={logscale}_2.png")
+    # plt.show()
+    plt.close()
+
+    if logscale:
+        print("\n\n***")
+        print(f"Estimates calculated on the time-averaged msd:")
+        print(f"alpha:\t{alpha_2:.4}")
+        print(f"D:\t{diffusion_unit_2:.4} um^2/s")
