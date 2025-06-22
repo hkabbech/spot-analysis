@@ -52,7 +52,7 @@ def measure_plot_all_msd(condition_dataset_path, result_path, parms):
         print("\n---------------------\n")
 
     all_results_df = pd.DataFrame.from_dict(all_results)
-    all_results_df = pd.concat([all_results_df, all_results_df[["length", "alpha", "D"]].apply(['mean', "median"])])  # Add mean and median
+    all_results_df = pd.concat([all_results_df, all_results_df[["length", "alpha", "D"]].apply(['mean', 'median', 'std', 'sem'])])  # Add mean and median
 
     print("\n\n*********************\n")
     print(f"Averages:")
@@ -219,7 +219,12 @@ def plot_ensemble_averaged_msd(all_msd, parms, average_estimates, result_path, l
     table_melt = table.melt()
     table_melt['variable'] = ((table_melt['variable']+1)*parms['time_frame'])
 
-    sns.lineplot(data=table_melt, x='variable', y='value', ax=axs, color="C0", errorbar=None, label="Ensemble-averaged MSD")
+    table.loc['mean'] = table.mean()
+    table.loc['std'] = table.std()
+    table.loc['sem'] = table.sem()
+    table.to_csv(result_path/"msd_curves.csv")
+
+    sns.lineplot(data=table_melt, x='variable', y='value', ax=axs, color="black", errorbar=None, label="Ensemble-averaged MSD")
 
     ## Add line fit from alpha and D averaged:
     alpha = average_estimates["alpha"]
@@ -245,5 +250,3 @@ def plot_ensemble_averaged_msd(all_msd, parms, average_estimates, result_path, l
     # plt.show()
     plt.close()
 
-    table.loc['mean'] = table.mean()
-    table.to_csv(result_path/"msd_curves.csv")
